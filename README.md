@@ -8,7 +8,7 @@
 
 ## Prerequisites
 
-- **Go:** Ensure you have Go version 1.23.x installed.
+- **Go:** Ensure you have at least Go version 1.23.4 installed.
 - **Ngrok:** Install Ngrok and ensure that you have created an account and authenticated.
 
 ## Installation
@@ -16,7 +16,7 @@
 1. Clone the repository:
 
    ```bash
-   git clone git@github.com:lukeberry99/chargebee-webhook-consumer
+   git clone git@github.com:lukeberry99/chargebee-webhook-consumer.git
    cd chargebee-webhook-consumer
    ```
 
@@ -44,13 +44,9 @@
 
 3. **Receive Webhooks**:
 
-   The application listens for incoming webhooks on the `/` endpoint. Webhook data is logged in the `logs` directory, with each event saved as a separate JSON file.
-
-## Configuration
-
-- **Ngrok Configuration**: You can customize Ngrok settings by modifying the `startNgrok` function if needed, such as adding authentication tokens for paid accounts.
+   The application listens for incoming webhooks on the `/` endpoint. Webhook data is logged in the `logs` directory, with each event saved as a separate JSON file with timestamp.
 
 ## Troubleshooting
 
-- **Ngrok Issues**: Ensure Ngrok is installed and the binary is in your system's PATH. Verify that no other application is using port 4040, which Ngrok uses for its API.
+- **Ngrok Issues**: Ensure Ngrok is installed and the binary is in your system's PATH. Make sure that you have created an ngrok account and set up your local environment with the auth key. Verify that no other application is using port 4040, which Ngrok uses for its API.
 - **Port Conflicts**: Ensure no other service is running on port 8080.
