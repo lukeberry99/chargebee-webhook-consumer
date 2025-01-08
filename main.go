@@ -131,6 +131,7 @@ func main() {
 	}
 
 	fmt.Printf("Ngrok URL: %s\n", url)
+	fmt.Println("Create a new webhook in Chargebee with this URL, and make sure that all events are sent. https://<team-name>.chargebee.com/apikeys_and_webhooks/webhooks")
 
 	if err := http.ListenAndServe(":8080", http.HandlerFunc(webhookHandler)); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
