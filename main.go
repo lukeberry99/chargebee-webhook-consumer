@@ -38,7 +38,7 @@ type WebhookData struct {
 	Event      ChargebeeEvent `json:"event"`
 }
 
-func webhookHandler(w http.ResponseWriter, r *http.Request) {
+func webhookHandler(w http.ResponseWriter, r *http.Request, logDir string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -74,15 +74,15 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Webhook received: logs/%d_%s.json\n", webhook.Event.OccurredAt, webhook.Event.EventType)
+	fmt.Printf("Webhook received: %s/%d_%s.json\n", logDir, webhook.Event.OccurredAt, webhook.Event.EventType)
 
-	if err := os.MkdirAll("logs", 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Printf("Error creating logs directory: %v", err)
 		http.Error(w, "Error logging webhook", http.StatusInternalServerError)
 		return
 	}
 
-	filename := fmt.Sprintf("logs/%d_%s.json", webhook.Event.OccurredAt, webhook.Event.EventType)
+	filename := fmt.Sprintf("%s/%d_%s.json", logDir, webhook.Event.OccurredAt, webhook.Event.EventType)
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Error opening log file: %v", err)
@@ -137,9 +137,11 @@ func main() {
 	}
 
 	fmt.Printf("Ngrok URL: %s\n", url)
-	fmt.Println("Create a new webhook in Chargebee with this URL, and make sure that all events are sent. https://<team-name>.chargebee.com/apikeys_and_webhooks/webhooks")
+	fmt.Println("Create a new webhook in Chargebee with this URL.")
 
-	if err := http.ListenAndServe(":8080", http.HandlerFunc(webhookHandler)); err != nil {
+	if err := http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		webhookHandler(w, r, "logs")
+	})); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
