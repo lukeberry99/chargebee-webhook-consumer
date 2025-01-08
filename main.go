@@ -68,7 +68,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Received webhook:\n%s\n", string(webhookJSON))
+	fmt.Printf("Webhook received: logs/%d_%s.json\n", webhook.Event.OccurredAt, webhook.Event.EventType)
 
 	if err := os.MkdirAll("logs", 0755); err != nil {
 		log.Printf("Error creating logs directory: %v", err)
