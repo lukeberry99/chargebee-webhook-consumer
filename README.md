@@ -17,8 +17,10 @@ webhook events and saves them locally for inspection and debugging.
   in the format `{chargebee_event_timestamp}_{event_type}.json`
 
 - **Timestamp Tracking:** Each logged event includes two timestamps:
-  - The original event occurence time from Chargbee (`event.occured_at`)
+  - The original event occurence time from Chargebee (`event.occured_at`)
   - The local time when our server received the webhook (`received_at`)
+  - The delta between these two times (`delta`). This is useful for determining
+    how quickly Chargebee sends webhooks.
 
 ## Prerequisites
 
@@ -80,6 +82,7 @@ Each logged webhook file contains:
 ```jsonc
 {
   "received_at": "2023-XX-XX:XX:XX:XXZ", // Local receipt time
+  "delta": "1m30s", // The delta between the time the event was emitted and we received it
   "event": {
     "id": "ev_xxx",
     "occurred_at": 1234567890,

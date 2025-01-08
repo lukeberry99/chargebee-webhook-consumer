@@ -34,6 +34,7 @@ type ChargebeeEvent struct {
 
 type WebhookData struct {
 	ReceivedAt string         `json:"received_at"`
+	Delta      string         `json:"delta"`
 	Event      ChargebeeEvent `json:"event"`
 }
 
@@ -57,8 +58,13 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	receivedAt := time.Now()
+	occurredAt := time.Unix(chargebeeEvent.OccurredAt, 0)
+	delta := receivedAt.Sub(occurredAt)
+
 	webhook := WebhookData{
-		ReceivedAt: time.Now().Format(time.RFC3339),
+		ReceivedAt: receivedAt.Format(time.RFC3339),
+		Delta:      delta.String(),
 		Event:      chargebeeEvent,
 	}
 
