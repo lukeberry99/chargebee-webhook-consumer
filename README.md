@@ -11,9 +11,14 @@ webhook events and saves them locally for inspection and debugging.
 - **Public URL Access:** Automatically creates a public URL using ngrok to
   expose your local server
 - **Event Logging:** Saves each webhook event as a separate JSON file in a
-  `logs` directory. Files are saved with format `{chargebee_timestamp}_{event_type}.json`
-  for easy reference
-- **Timestamp Tracking:** Each logged event includes both Chargebee's timestamp and local receipt time
+  `logs` directory.
+
+  Files are named using Chargebee's event occurence timestamp
+  in the format `{chargebee_event_timestamp}_{event_type}.json`
+
+- **Timestamp Tracking:** Each logged event includes two timestamps:
+  - The original event occurence time from Chargbee (`event.occured_at`)
+  - The local time when our server received the webhook (`received_at`)
 
 ## Prerequisites
 
@@ -25,14 +30,16 @@ webhook events and saves them locally for inspection and debugging.
 
 1. Clone the repository:
 
-   ````bash git clone git@github.com:lukeberry99/chargebee-webhook-consumer.git
-   cd chargebee-webhook-consumer ```
-
-   ````
+```bash
+git clone git@github.com:lukeberry99/chargebee-webhook-consumer.git
+cd chargebee-webhook-consumer
+```
 
 2. Install dependencies:
 
-   `bash go mod tidy `
+```bash
+go mod tidy
+```
 
 ## Usage
 
@@ -40,7 +47,9 @@ webhook events and saves them locally for inspection and debugging.
 
    Run the application using the following command:
 
-   `bash go run main.go `
+   ```bash
+   go run main.go
+   ```
 
    This will:
 
@@ -66,10 +75,19 @@ webhook events and saves them locally for inspection and debugging.
 
 ## Webhook Data Structure
 
-Each logged webhook file contains: `json { "timestamp":
-"2023-XX-XX:XX:XX:XXZ",  // Local receipt time "event": { "id": "ev_xxx",
-"occurred_at": 1234567890, "event_type": "event_name", "content": {}, // ...
-additional Chargebee event data } } `
+Each logged webhook file contains:
+
+```json
+{
+  "received_at": "2023-XX-XX:XX:XX:XXZ", // Local receipt time
+  "event": {
+    "id": "ev_xxx",
+    "occurred_at": 1234567890,
+    "event_type": "event_name",
+    "content": {} // ...additional Chargebee event data
+  }
+}
+```
 
 ## Troubleshooting
 
