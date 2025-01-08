@@ -77,15 +77,15 @@ go mod tidy
 
 Each logged webhook file contains:
 
-```json
+```jsonc
 {
   "received_at": "2023-XX-XX:XX:XX:XXZ", // Local receipt time
   "event": {
     "id": "ev_xxx",
     "occurred_at": 1234567890,
     "event_type": "event_name",
-    "content": {} // ...additional Chargebee event data
-  }
+    "content": {}, // ...additional Chargebee event data
+  },
 }
 ```
 
