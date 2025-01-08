@@ -76,7 +76,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("logs/%s_%d.json", webhook.Event.EventType, webhook.Event.OccurredAt)
+	filename := fmt.Sprintf("logs/%d_%s.json", webhook.Event.OccurredAt, webhook.Event.EventType)
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Error opening log file: %v", err)
