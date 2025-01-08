@@ -7,10 +7,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
-
-	"github.com/localtunnel/go-localtunnel"
 )
+
+type NgrokTunnel struct {
+	PublicURL string `json:"public_url"`
+}
 
 type ChargebeeEvent struct {
 	ID            string      `json:"id"`
@@ -89,16 +92,45 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Webhook received successfully"))
+}
+
+func startNgrok() (string, error) {
+	cmd := exec.Command("ngrok", "http", "8080")
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to start ngrok: %w", err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	resp, err := http.Get("http://localhost:4040/api/tunnels")
+	if err != nil {
+		return "", fmt.Errorf("failed to query ngrok API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Tunnels []NgrokTunnel `json:"tunnels"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode ngrok API response: %w", err)
+	}
+
+	for _, tunnel := range result.Tunnels {
+		if tunnel.PublicURL != "" {
+			return tunnel.PublicURL, nil
+		}
+	}
+
+	return "", fmt.Errorf("ngrok URL not found")
 }
 
 func main() {
-	tunnel, err := localtunnel.Listen(localtunnel.Options{})
+	url, err := startNgrok()
 	if err != nil {
-		log.Fatalf("Unable to start localtunnel: %v", err)
+		log.Fatalf("Error starting Ngrok: %v", err)
 	}
 
-	fmt.Printf("Localtunnel URL: %s\n", tunnel.URL())
+	fmt.Printf("Ngrok URL: %s\n", url)
 
 	if err := http.ListenAndServe(":8080", http.HandlerFunc(webhookHandler)); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
