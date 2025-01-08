@@ -33,8 +33,8 @@ type ChargebeeEvent struct {
 }
 
 type WebhookData struct {
-	Timestamp string         `json:"timestamp"`
-	Event     ChargebeeEvent `json:"event"`
+	ReceivedAt string         `json:"received_at"`
+	Event      ChargebeeEvent `json:"event"`
 }
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +58,8 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	webhook := WebhookData{
-		Timestamp: time.Now().Format(time.RFC3339),
-		Event:     chargebeeEvent,
+		ReceivedAt: time.Now().Format(time.RFC3339),
+		Event:      chargebeeEvent,
 	}
 
 	webhookJSON, err := json.MarshalIndent(webhook, "", "  ")
