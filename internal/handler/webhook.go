@@ -44,16 +44,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 
 		if key, ok := token.(string); ok {
 			switch key {
-			case "occurred_at":
-				token, err := decoder.Token()
-				if err != nil {
-					http.Error(w, "Error reading JSON", http.StatusBadRequest)
-					return
-				}
-				if num, ok := token.(float64); ok {
-					occurredAt = int64(num)
-				}
 			case "event_type":
+			case "type":
 				token, err := decoder.Token()
 				if err != nil {
 					http.Error(w, "Error reading JSON", http.StatusBadRequest)
