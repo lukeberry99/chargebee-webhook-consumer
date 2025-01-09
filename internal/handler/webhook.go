@@ -35,6 +35,65 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 	}
 
 	receivedAt := time.Now()
+	var eventName string
+
+	var depth int
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			http.Error(w, "Error reading JSON", http.StatusBadRequest)
+			return
+		}
+
+		switch token {
+		case json.Delim('{'):
+			depth++
+			continue
+		case json.Delim('}'):
+			depth--
+			continue
+		case json.Delim('['):
+			depth++
+			continue
+		case json.Delim(']'):
+			depth--
+			continue
+		}
+
+		if depth == 0 {
+			if key, ok := token.(string); ok {
+				if key == "event_type" {
+					token, err := decoder.Token()
+					if err != nil {
+						http.Error(w, "Error reading JSON", http.StatusBadRequest)
+						return
+					}
+					if str, ok := token.(string); ok {
+						eventName = str
+						break // Exit immediately if we find event_type
+					}
+				} else if eventName == "" { // Only check other fields if we haven't found event_type
+					for _, field := range []string{"type", "title", "id"} {
+						if key == field {
+							token, err := decoder.Token()
+							if err != nil {
+								http.Error(w, "Error reading JSON", http.StatusBadRequest)
+								return
+							}
+							if str, ok := token.(string); ok {
+								eventName = str
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if eventName == "" {
+		eventName = generateFilename(rawBody)
+	}
 
 	var rawJSON interface{}
 	if err := json.Unmarshal(rawBody, &rawJSON); err != nil {
@@ -42,17 +101,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 		return
 	}
 
-	// Generate a hash of the request payload, and use that as a unique
-	// identifier in the filename
-	hasher := sha256.New()
-	hasher.Write(rawBody)
-	hashBytes := hasher.Sum(nil)
-	hashString := hex.EncodeToString(hashBytes)
-
-	shortHash := hashString[:8]
-
 	event := &storage.WebhookEvent{
-		ID:         shortHash,
+		EventName:  eventName,
 		ReceivedAt: receivedAt,
 		RawEvent:   rawJSON,
 	}
@@ -67,4 +117,15 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 	fmt.Printf("Webhook processed: %s\n", filename)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func generateFilename(rawBody []byte) string {
+	// Generate a hash of the request payload, and use that as a unique
+	// identifier in the filename
+	hasher := sha256.New()
+	hasher.Write(rawBody)
+	hashBytes := hasher.Sum(nil)
+	hashString := hex.EncodeToString(hashBytes)
+
+	return hashString[:8]
 }

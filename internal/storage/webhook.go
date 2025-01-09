@@ -12,7 +12,7 @@ type FileStorage struct {
 }
 
 type WebhookEvent struct {
-	ID         string
+	EventName  string
 	ReceivedAt time.Time
 	RawEvent   interface{}
 }
@@ -31,7 +31,7 @@ func NewFileStorage(baseDir string) (*FileStorage, error) {
 }
 
 func (fs *FileStorage) Store(event *WebhookEvent) (string, error) {
-	filename := fmt.Sprintf("%s/%d_%s.json", fs.baseDir, event.ReceivedAt.Unix(), event.ID)
+	filename := fmt.Sprintf("%s/%d_%s.json", fs.baseDir, event.ReceivedAt.Unix(), event.EventName)
 
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
