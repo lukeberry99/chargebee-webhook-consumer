@@ -15,7 +15,6 @@ type WebhookEvent struct {
 	ReceivedAt time.Time
 	OccurredAt int64
 	EventType  string
-	Delta      time.Duration
 	RawEvent   interface{}
 }
 
@@ -46,7 +45,6 @@ func (fs *FileStorage) Store(event *WebhookEvent) error {
 
 	data := map[string]interface{}{
 		"received_at": event.ReceivedAt.Format(time.RFC3339),
-		"delta":       event.Delta.String(),
 		"event":       event.RawEvent,
 	}
 

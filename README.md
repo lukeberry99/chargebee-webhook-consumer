@@ -1,105 +1,104 @@
-# Chargebee Webhook Consumer
+# 🎯 Webhook Consumer
 
-A local development tool for receiving and debugging Chargebee webhooks. This
-application creates a publicly accessible endpoint that can receive Chargebee
-webhook events and saves them locally for inspection and debugging.
+A lightweight command-line tool for locally testing and debugging webhooks during development. When you run this tool, it creates a temporary public URL that receives webhook events and saves them locally for inspection - perfect for development and debugging without deploying to a server.
 
-## Features
+## ⚡ What Does It Do?
 
-- **Webhook Handling:** Receives and processes Chargebee webhook events via
-  HTTP POST requests
-- **Public URL Access:** Automatically creates a public URL using ngrok to
-  expose your local server
-- **Event Logging:** Saves each webhook event as a separate JSON file in a
-  `logs` directory.
+When you start the tool, it:
 
-  Files are named using Chargebee's event occurence timestamp
-  in the format `{chargebee_event_timestamp}_{event_type}.json`
+1. Creates a local server on your machine
+2. Establishes a secure tunnel using ngrok to make your local server publicly accessible
+3. Provides you with a temporary URL to configure in a third party
+4. Saves all received webhooks as JSON files for easy inspection
 
-- **Timestamp Tracking:** Each logged event includes two timestamps:
-  - The original event occurence time from Chargebee (`event.occured_at`)
-  - The local time when our server received the webhook (`received_at`)
-  - The delta between these two times (`delta`). This is useful for determining
-    how quickly Chargebee sends webhooks.
+Each webhook is saved with timing information so you can analyze:
 
-## Prerequisites
+- When the event was sent
+- When you received it
+- The time difference between these points
 
-- **Go:** Version 1.23.4 or higher
-- **Ngrok:** Install Ngrok and ensure that you have created an account and
-  authenticated.
+## 📦 Installation
 
-## Installation
+You can install the tool in several ways:
 
-1. Clone the repository:
+Using Go:
 
 ```bash
-git clone git@github.com:lukeberry99/chargebee-webhook-consumer.git
-cd chargebee-webhook-consumer
+go install github.com/lukeberry99/webhook-consumer@latest
 ```
 
-2. Install dependencies:
+Using Homebrew (macOS and Linux):
 
 ```bash
-go mod tidy
+brew install lukeberry99/tap/webhook-consumer
 ```
 
-## Usage
+## ✨ Prerequisites
 
-1. **Start the Application**:
+- ngrok - Make sure you have:
+  1. Installed ngrok (`brew install ngrok` or download from ngrok.com)
+  2. Created an ngrok account
+  3. Authenticated your ngrok installation
 
-   Run the application using the following command:
+## 🚀 Using the Tool
 
-   ```bash
-   go run main.go
-   ```
+1. Start receiving webhooks:
 
-   This will:
+```bash
+wc
+```
 
-   - Start a local server on port 8080
-   - Create a public URL using ngrok
-   - Display the public URL for configuring in Chargebee
+2. The tool will display a temporary URL, something like:
 
-2. **Configure Chargebee**:
+```
+Ngrok URL: https://a1b2c3d4.ngrok.io
+```
 
-   - Go to your Chargebee dashboard
-   - Navigate to Settings → Configure Chargebee → Webhooks
-   - Add a new webhook endpoint using the displayed public URL
-   - Select the events you want to receive
+3. Configure this URL in your third party:
 
-3. **Monitor Webhooks**:
+4. The tool will now:
+   - Receive webhooks at this URL
+   - Save each webhook as a JSON file in the `logs` directory
+   - Name files as `{timestamp}_{event_type}.json`
 
-   The application will:
+## 📝 Understanding the Saved Webhooks
 
-   - Receive webhook events at the root endpoint (/)
-   - Save each event as a JSON file in the `logs` directory
-   - Use the naming format: `{timestamp}_{event_type}.json`
-   - Display a console message for each received webhook
-
-## Webhook Data Structure
-
-Each logged webhook file contains:
+Each webhook is saved as a JSON file containing:
 
 ```jsonc
 {
-  "received_at": "2023-XX-XX:XX:XX:XXZ", // Local receipt time
-  "delta": "1m30s", // The delta between the time the event was emitted and we received it
-  "event": {
-    "id": "ev_xxx",
-    "occurred_at": 1234567890,
-    "event_type": "event_name",
-    "content": {}, // ...additional Chargebee event data
-  },
+  "received_at": "2024-01-09T15:04:05Z",
+  "event": {}, // The raw event payload
 }
 ```
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
-- **Port 8080 In Use**: Ensure no other service is using port 8080
-- **Connection Issues**: Check your internet connection and firewall settings
-- **Missing Logs**: Ensure the application has write permissions in the current
-  directory
-- **Ngrok Issues**: Ensure Ngrok is installed and the binary is in your
-  system's PATH. Make sure that you have created an ngrok account and set up your
-  local environment with the auth key. Verify that no other application is using
-  port 4040, which Ngrok uses for its API.
-- **Port Conflicts**: Ensure no other service is running on port 8080.
+If you're having issues:
+
+1. Check that ngrok is properly installed and authenticated
+2. Ensure port 8080 is available on your machine
+3. Verify that port 4040 (used by ngrok's API) isn't in use
+4. Make sure you have write permissions in the directory where you're running the tool
+
+## 🤝 Contributing
+
+If you'd like to contribute to the project:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes
+4. Push to your fork
+5. Open a Pull Request
+
+Make sure to:
+
+- Follow existing code style
+- Add tests for new features
+- Update documentation as needed
+
+## 💡 Need Help?
+
+- File an issue on GitHub if you find a bug
+- Star the repository if you find it useful
+- Pull requests are welcome!

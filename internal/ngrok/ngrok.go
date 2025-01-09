@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/lukeberry99/chargebee-webhook-consumer/internal/models"
+	"github.com/lukeberry99/webhook-consumer/internal/models"
 )
 
 func Start() (string, error) {

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lukeberry99/chargebee-webhook-consumer/internal/storage"
+	"github.com/lukeberry99/webhook-consumer/internal/storage"
 )
 
 func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.WebhookStorage) {
@@ -81,13 +81,11 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 		return
 	}
-	delta := receivedAt.Sub(time.Unix(occurredAt, 0))
 
 	event := &storage.WebhookEvent{
 		ReceivedAt: receivedAt,
 		OccurredAt: occurredAt,
 		EventType:  eventType,
-		Delta:      delta,
 		RawEvent:   rawJSON,
 	}
 

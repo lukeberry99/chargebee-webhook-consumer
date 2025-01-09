@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lukeberry99/chargebee-webhook-consumer/internal/handler"
-	"github.com/lukeberry99/chargebee-webhook-consumer/internal/ngrok"
-	"github.com/lukeberry99/chargebee-webhook-consumer/internal/storage"
+	"github.com/lukeberry99/webhook-consumer/internal/handler"
+	"github.com/lukeberry99/webhook-consumer/internal/ngrok"
+	"github.com/lukeberry99/webhook-consumer/internal/storage"
 )
 
 func main() {
@@ -27,7 +27,6 @@ func main() {
 	}
 
 	fmt.Printf("Ngrok URL: %s\n", url)
-	fmt.Println("Create a new webhook in Chargebee with this URL.")
 
 	srv := &http.Server{
 		Addr: ":8080",

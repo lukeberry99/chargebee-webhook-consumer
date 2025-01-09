@@ -1,3 +1,3 @@
-module github.com/lukeberry99/chargebee-webhook-consumer
+module github.com/lukeberry99/webhook-consumer
 
 go 1.23.4
