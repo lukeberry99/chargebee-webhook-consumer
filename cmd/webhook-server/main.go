@@ -7,17 +7,25 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/lukeberry99/webhook-consumer/internal/config"
 	"github.com/lukeberry99/webhook-consumer/internal/handler"
 	"github.com/lukeberry99/webhook-consumer/internal/ngrok"
 	"github.com/lukeberry99/webhook-consumer/internal/storage"
 )
 
 func main() {
+	cfg, err := config.Load("")
+	if err != nil {
+		log.Fatalf("Error when loading configuration file: %v", err)
+	}
+
 	url, err := ngrok.Start()
 	if err != nil {
+		log.Println("Unable to start ngrok, are you sure it's installed and authenticated?")
 		log.Fatalf("Error starting Ngrok: %v", err)
 	}
 
@@ -28,12 +36,16 @@ func main() {
 
 	fmt.Printf("Ngrok URL: %s\n", url)
 
+	port := strconv.Itoa(cfg.Server.Port)
+
 	srv := &http.Server{
-		Addr: ":8080",
+		Addr: ":" + port,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handler.WebhookHandler(w, r, store)
 		}),
 	}
+
+	log.Printf("Starting server on port %s", port)
 
 	serverErrors := make(chan error, 1)
 
