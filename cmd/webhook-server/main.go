@@ -38,7 +38,6 @@ func main() {
 	serverErrors := make(chan error, 1)
 
 	go func() {
-		log.Printf("Server listening on %s", srv.Addr)
 		serverErrors <- srv.ListenAndServe()
 	}()
 

@@ -2,7 +2,10 @@ package handler
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -32,41 +35,6 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 	}
 
 	receivedAt := time.Now()
-	var occurredAt int64
-	var eventType string
-
-	for decoder.More() {
-		token, err := decoder.Token()
-		if err != nil {
-			http.Error(w, "Error reading JSON", http.StatusBadRequest)
-			return
-		}
-
-		if key, ok := token.(string); ok {
-			switch key {
-			case "event_type":
-			case "type":
-				token, err := decoder.Token()
-				if err != nil {
-					http.Error(w, "Error reading JSON", http.StatusBadRequest)
-					return
-				}
-				if str, ok := token.(string); ok {
-					eventType = str
-				}
-			default:
-				if _, err := decoder.Token(); err != nil {
-					http.Error(w, "Error reading JSON", http.StatusBadRequest)
-					return
-				}
-			}
-		}
-	}
-
-	if eventType == "" || occurredAt == 0 {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
-		return
-	}
 
 	var rawJSON interface{}
 	if err := json.Unmarshal(rawBody, &rawJSON); err != nil {
@@ -74,17 +42,29 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 		return
 	}
 
+	// Generate a hash of the request payload, and use that as a unique
+	// identifier in the filename
+	hasher := sha256.New()
+	hasher.Write(rawBody)
+	hashBytes := hasher.Sum(nil)
+	hashString := hex.EncodeToString(hashBytes)
+
+	shortHash := hashString[:8]
+
 	event := &storage.WebhookEvent{
+		ID:         shortHash,
 		ReceivedAt: receivedAt,
-		OccurredAt: occurredAt,
-		EventType:  eventType,
 		RawEvent:   rawJSON,
 	}
 
-	if err := store.Store(event); err != nil {
+	filename, err := store.Store(event)
+	if err != nil {
 		log.Printf("Error storing webhook: %v", err)
 		http.Error(w, "Error processing webhook", http.StatusInternalServerError)
+		return
 	}
+
+	fmt.Printf("Webhook processed: %s\n", filename)
 
 	w.WriteHeader(http.StatusOK)
 }
