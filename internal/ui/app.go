@@ -9,8 +9,8 @@ import (
 type UI struct {
 	app            *tview.Application
 	requestList    *tview.List
-	requestDetails *tview.TextArea
-	logView        *tview.TextArea
+	requestDetails *tview.TextView
+	logView        *tview.TextView
 	statusBar      *tview.TextView
 	store          *storage.FileStorage
 	config         *config.Config
