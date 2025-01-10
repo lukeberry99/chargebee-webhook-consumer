@@ -2,8 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,29 +39,19 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 		return
 	}
 
-	// Generate a hash of the request payload, and use that as a unique
-	// identifier in the filename
-	hasher := sha256.New()
-	hasher.Write(rawBody)
-	hashBytes := hasher.Sum(nil)
-	hashString := hex.EncodeToString(hashBytes)
-
-	shortHash := hashString[:8]
-
 	event := &storage.WebhookEvent{
-		ID:         shortHash,
 		ReceivedAt: receivedAt,
 		RawEvent:   rawJSON,
 	}
 
-	filename, err := store.Store(event)
+	filename, err := store.Store(event, rawBody)
 	if err != nil {
 		logChan <- fmt.Sprintf("Error storing webhook: %v", err)
 		http.Error(w, "Error processing webhook", http.StatusInternalServerError)
 		return
 	}
 
-	logChan <- fmt.Sprintf("Webhook processed: %s\n", filename)
+	logChan <- fmt.Sprintf("Webhook processed: %s", filename)
 
 	w.WriteHeader(http.StatusOK)
 }

@@ -1,29 +1,30 @@
 package storage
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type FileStorage struct {
 	baseDir string
-	// Channel to notify listeners of updates
 	updates chan []EventListItem
 }
 
 type WebhookEvent struct {
-	ID         string
 	ReceivedAt time.Time
 	RawEvent   interface{}
 }
 
 type WebhookStorage interface {
-	Store(event *WebhookEvent) (string, error)
+	Store(event *WebhookEvent, rawBody []byte) (string, error)
 }
 
 func NewFileStorage(baseDir string) (*FileStorage, error) {
@@ -36,13 +37,11 @@ func NewFileStorage(baseDir string) (*FileStorage, error) {
 		updates: make(chan []EventListItem, 1),
 	}
 
-	// Start watching the directory
 	go fs.watchDirectory()
 
 	return fs, nil
 }
 
-// WatchEvents returns a channel that will receive updates when files change
 func (fs *FileStorage) WatchEvents() <-chan []EventListItem {
 	return fs.updates
 }
@@ -55,7 +54,6 @@ func (fs *FileStorage) watchDirectory() {
 	}
 	defer watcher.Close()
 
-	// Start watching the directory
 	err = watcher.Add(fs.baseDir)
 	if err != nil {
 		fmt.Printf("Error watching directory: %v\n", err)
@@ -83,7 +81,6 @@ func (fs *FileStorage) watchDirectory() {
 						fmt.Printf("Error listing events: %v\n", err)
 						return
 					}
-					// Send update
 					fs.updates <- items
 				})
 			}
@@ -132,7 +129,6 @@ func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
 			return nil, fmt.Errorf("parsing JSON from %s: %w", filePath, err)
 		}
 
-		// Parse the RFC3339 timestamp and format it as requested
 		timestamp, err := time.Parse(time.RFC3339, fileData.ReceivedAt)
 		if err != nil {
 			return nil, fmt.Errorf("parsing timestamp from %s: %w", filePath, err)
@@ -154,7 +150,6 @@ func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
 	return items, nil
 }
 
-// ReadEvent reads the contents of a webhook event file by filename
 func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
 	filepath := fmt.Sprintf("%s/%s", fs.baseDir, filename)
 
@@ -166,8 +161,8 @@ func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func (fs *FileStorage) Store(event *WebhookEvent) (string, error) {
-	filename := fmt.Sprintf("%s/%d_%s.json", fs.baseDir, event.ReceivedAt.Unix(), event.ID)
+func (fs *FileStorage) Store(event *WebhookEvent, rawBody []byte) (string, error) {
+	filename := fmt.Sprintf("%s/%d_%s.json", fs.baseDir, event.ReceivedAt.Unix(), fs.generateUniqueFilename(rawBody))
 
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -188,4 +183,20 @@ func (fs *FileStorage) Store(event *WebhookEvent) (string, error) {
 	}
 
 	return filename, nil
+}
+
+func (fs *FileStorage) GetFullPath(filename string) string {
+	return fmt.Sprintf("%s/%s", fs.baseDir, filename)
+}
+
+// Generate a hash of the request payload for unique filenames
+func (fs *FileStorage) generateUniqueFilename(rawBody []byte) string {
+	hasher := sha256.New()
+	hasher.Write(rawBody)
+	hashBytes := hasher.Sum(nil)
+	hashString := hex.EncodeToString(hashBytes)
+
+	shortHash := hashString[:8]
+
+	return shortHash
 }
