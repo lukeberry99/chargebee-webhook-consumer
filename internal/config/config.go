@@ -17,7 +17,8 @@ type Config struct {
 		Path string `yaml:"path"`
 	} `yaml:"storage"`
 	Tunnel struct {
-		Driver string `yaml:"driver"`
+		Driver          string `yaml:"driver"`
+		CloudflareToken string `yaml:"cloudflare_token,omitempty"`
 	} `yaml:"tunnel"`
 }
 
@@ -78,7 +79,7 @@ func Load(configPath string) (*Config, error) {
 	// If no config file was found, create default config
 	if config == nil {
 		if lastErr != nil {
-			log.Printf("No config files found, using defaults. Last error: %v", lastErr)
+			log.Printf("No config files found, using defaults.")
 		}
 		config = &Config{}
 	}

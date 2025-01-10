@@ -13,8 +13,8 @@ import (
 
 	"github.com/lukeberry99/webhook-consumer/internal/config"
 	"github.com/lukeberry99/webhook-consumer/internal/handler"
-	"github.com/lukeberry99/webhook-consumer/internal/ngrok"
 	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/webhook-consumer/internal/tunnel"
 )
 
 func main() {
@@ -23,10 +23,33 @@ func main() {
 		log.Fatalf("Error when loading configuration file: %v", err)
 	}
 
-	url, err := ngrok.Start()
-	if err != nil {
-		log.Println("Unable to start ngrok, are you sure it's installed and authenticated?")
-		log.Fatalf("Error starting Ngrok: %v", err)
+	port := strconv.Itoa(cfg.Server.Port)
+
+	var tunnelURL string
+	var tunnelServer tunnel.Tunnel
+
+	if cfg.Tunnel.Driver != "local" {
+		tunnelConfig := tunnel.Config{
+			Provider:        tunnel.Provider(cfg.Tunnel.Driver),
+			CloudflareToken: cfg.Tunnel.CloudflareToken,
+		}
+
+		tunnelService, err := tunnel.New(tunnelConfig)
+		if err != nil {
+			log.Fatalf("Failed to create tunnel: %v", err)
+		}
+
+		tunnelURL, err = tunnelService.Start()
+		if err != nil {
+			log.Fatalf("Failed to start tunnel: %v", err)
+		}
+
+		log.Printf("Tunnel URL: %s", tunnelURL)
+		defer tunnelServer.Stop()
+	} else {
+		url := fmt.Sprintf("http://localhost:%s", port)
+		log.Println("Running in local mode - no tunnel started")
+		log.Printf("Tunnel URL: %s\n", url)
 	}
 
 	store, err := storage.NewFileStorage("./logs")
@@ -34,18 +57,12 @@ func main() {
 		log.Fatalf("Failed to create storage: %v", err)
 	}
 
-	fmt.Printf("Ngrok URL: %s\n", url)
-
-	port := strconv.Itoa(cfg.Server.Port)
-
 	srv := &http.Server{
 		Addr: ":" + port,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handler.WebhookHandler(w, r, store)
 		}),
 	}
-
-	log.Printf("Starting server on port %s", port)
 
 	serverErrors := make(chan error, 1)
 
@@ -70,6 +87,12 @@ func main() {
 			log.Printf("Error during shutdown: %v", err)
 			if err := srv.Close(); err != nil {
 				log.Printf("Error during forced shutdown: %v", err)
+			}
+		}
+
+		if tunnelServer != nil {
+			if err := tunnelServer.Stop(); err != nil {
+				log.Printf("Error stopping tunnel: %v", err)
 			}
 		}
 	}
