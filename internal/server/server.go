@@ -1,4 +1,4 @@
-package webhookserver
+package server
 
 import (
 	"context"
@@ -27,20 +27,20 @@ func StartWebhookServer(cfg *config.Config, logChan chan<- string, store *storag
 			CloudflareToken: cfg.Tunnel.CloudflareToken,
 		}
 
-		tunnelService, err := tunnel.New(tunnelConfig)
+		var err error
+		tunnelServer, err = tunnel.New(tunnelConfig)
 		if err != nil {
 			logChan <- fmt.Sprintf("Failed to create tunnel: %v", err)
 			return
 		}
 
-		tunnelURL, err = tunnelService.Start()
+		tunnelURL, err = tunnelServer.Start()
 		if err != nil {
 			logChan <- fmt.Sprintf("Failed to start tunnel: %v", err)
 			return
 		}
 
 		logChan <- fmt.Sprintf("Tunnel URL: %s", tunnelURL)
-		defer tunnelServer.Stop()
 	} else {
 		url := fmt.Sprintf("http://localhost:%d", cfg.Server.Port)
 		logChan <- fmt.Sprintf("Running in local mode - no tunnel started")

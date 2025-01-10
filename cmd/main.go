@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"github.com/lukeberry99/webhook-consumer/cmd/ui"
-	webhookserver "github.com/lukeberry99/webhook-consumer/cmd/webhook-server"
 	"github.com/lukeberry99/webhook-consumer/internal/config"
+	"github.com/lukeberry99/webhook-consumer/internal/server"
 	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/webhook-consumer/internal/ui"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func main() {
 
 	logChan := make(chan string)
 
-	go webhookserver.StartWebhookServer(cfg, logChan, store)
+	go server.StartWebhookServer(cfg, logChan, store)
 
 	ui.StartUI(cfg, logChan, store)
 }
