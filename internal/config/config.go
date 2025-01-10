@@ -19,6 +19,12 @@ type Config struct {
 		Driver          string `yaml:"driver"`
 		CloudflareToken string `yaml:"cloudflare_token,omitempty"`
 	} `yaml:"tunnel"`
+	Services map[string]ServiceConfig `yaml:"services"`
+}
+
+type ServiceConfig struct {
+	EventTypeSource   string `yaml:"event_type_source"`
+	EventTypeLocation string `yaml:"event_type_location"`
 }
 
 func getConfigLocations(configPath string) []string {
