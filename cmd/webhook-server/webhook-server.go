@@ -1,13 +1,11 @@
-package main
+package webhookserver
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -17,13 +15,8 @@ import (
 	"github.com/lukeberry99/webhook-consumer/internal/tunnel"
 )
 
-func main() {
-	cfg, err := config.Load("")
-	if err != nil {
-		log.Fatalf("Error when loading configuration file: %v", err)
-	}
-
-	port := strconv.Itoa(cfg.Server.Port)
+func StartWebhookServer(cfg *config.Config, logChan chan<- string, store *storage.FileStorage) {
+	defer close(logChan)
 
 	var tunnelURL string
 	var tunnelServer tunnel.Tunnel
@@ -36,31 +29,28 @@ func main() {
 
 		tunnelService, err := tunnel.New(tunnelConfig)
 		if err != nil {
-			log.Fatalf("Failed to create tunnel: %v", err)
+			logChan <- fmt.Sprintf("Failed to create tunnel: %v", err)
+			return
 		}
 
 		tunnelURL, err = tunnelService.Start()
 		if err != nil {
-			log.Fatalf("Failed to start tunnel: %v", err)
+			logChan <- fmt.Sprintf("Failed to start tunnel: %v", err)
+			return
 		}
 
-		log.Printf("Tunnel URL: %s", tunnelURL)
+		logChan <- fmt.Sprintf("Tunnel URL: %s", tunnelURL)
 		defer tunnelServer.Stop()
 	} else {
-		url := fmt.Sprintf("http://localhost:%s", port)
-		log.Println("Running in local mode - no tunnel started")
-		log.Printf("Tunnel URL: %s\n", url)
-	}
-
-	store, err := storage.NewFileStorage("./logs")
-	if err != nil {
-		log.Fatalf("Failed to create storage: %v", err)
+		url := fmt.Sprintf("http://localhost:%d", cfg.Server.Port)
+		logChan <- fmt.Sprintf("Running in local mode - no tunnel started")
+		logChan <- fmt.Sprintf("Tunnel URL: %s\n", url)
 	}
 
 	srv := &http.Server{
-		Addr: ":" + port,
+		Addr: fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handler.WebhookHandler(w, r, store)
+			handler.WebhookHandler(w, r, store, logChan)
 		}),
 	}
 
@@ -75,24 +65,24 @@ func main() {
 
 	select {
 	case err := <-serverErrors:
-		log.Fatalf("Error starting server: %v", err)
+		logChan <- fmt.Sprintf("Error starting server: %v", err)
 
 	case sig := <-shutdown:
-		log.Printf("Starting shutdown, received signal: %v", sig)
+		logChan <- fmt.Sprintf("Starting shutdown, received signal: %v", sig)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("Error during shutdown: %v", err)
+			logChan <- fmt.Sprintf("Error during shutdown: %v", err)
 			if err := srv.Close(); err != nil {
-				log.Printf("Error during forced shutdown: %v", err)
+				logChan <- fmt.Sprintf("Error during forced shutdown: %v", err)
 			}
 		}
 
 		if tunnelServer != nil {
 			if err := tunnelServer.Stop(); err != nil {
-				log.Printf("Error stopping tunnel: %v", err)
+				logChan <- fmt.Sprintf("Error stopping tunnel: %v", err)
 			}
 		}
 	}

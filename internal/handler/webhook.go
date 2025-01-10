@@ -7,14 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/lukeberry99/webhook-consumer/internal/storage"
 )
 
-func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.WebhookStorage) {
+func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.WebhookStorage, logChan chan<- string) {
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
@@ -59,12 +58,12 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.Webhoo
 
 	filename, err := store.Store(event)
 	if err != nil {
-		log.Printf("Error storing webhook: %v", err)
+		logChan <- fmt.Sprintf("Error storing webhook: %v", err)
 		http.Error(w, "Error processing webhook", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("Webhook processed: %s\n", filename)
+	logChan <- fmt.Sprintf("Webhook processed: %s\n", filename)
 
 	w.WriteHeader(http.StatusOK)
 }

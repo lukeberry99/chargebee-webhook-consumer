@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -72,14 +71,14 @@ func Load(configPath string) (*Config, error) {
 			return nil, fmt.Errorf("error parsing config file %s: %w", loc, err)
 		}
 
-		log.Printf("Using config file: %s", loc)
+		// log.Printf("Using config file: %s", loc)
 		break // Use the first valid config file found
 	}
 
 	// If no config file was found, create default config
 	if config == nil {
 		if lastErr != nil {
-			log.Printf("No config files found, using defaults.")
+			// log.Printf("No config files found, using defaults.")
 		}
 		config = &Config{}
 	}

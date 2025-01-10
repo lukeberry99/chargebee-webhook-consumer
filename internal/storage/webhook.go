@@ -3,12 +3,17 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"os"
+	"sort"
+	"strings"
 	"time"
 )
 
 type FileStorage struct {
 	baseDir string
+	// Channel to notify listeners of updates
+	updates chan []EventListItem
 }
 
 type WebhookEvent struct {
@@ -25,9 +30,140 @@ func NewFileStorage(baseDir string) (*FileStorage, error) {
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return nil, fmt.Errorf("creating storage directory: %w", err)
 	}
-	return &FileStorage{
+
+	fs := &FileStorage{
 		baseDir: baseDir,
-	}, nil
+		updates: make(chan []EventListItem, 1),
+	}
+
+	// Start watching the directory
+	go fs.watchDirectory()
+
+	return fs, nil
+}
+
+// WatchEvents returns a channel that will receive updates when files change
+func (fs *FileStorage) WatchEvents() <-chan []EventListItem {
+	return fs.updates
+}
+
+func (fs *FileStorage) watchDirectory() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		fmt.Printf("Error creating watcher: %v\n", err)
+		return
+	}
+	defer watcher.Close()
+
+	// Start watching the directory
+	err = watcher.Add(fs.baseDir)
+	if err != nil {
+		fmt.Printf("Error watching directory: %v\n", err)
+		return
+	}
+
+	// Debounce timer to prevent rapid updates
+	var timer *time.Timer
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			// Only care about create, remove, or rename operations
+			if event.Op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
+				if timer != nil {
+					timer.Stop()
+				}
+				// Wait a short period before updating to batch rapid changes
+				timer = time.AfterFunc(100*time.Millisecond, func() {
+					// Get updated list
+					items, err := fs.ListEvents()
+					if err != nil {
+						fmt.Printf("Error listing events: %v\n", err)
+						return
+					}
+					// Send update
+					fs.updates <- items
+				})
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			fmt.Printf("Watcher error: %v\n", err)
+		}
+	}
+}
+
+type EventListItem struct {
+	Filename   string
+	ReceivedAt string
+}
+
+func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
+	entries, err := os.ReadDir(fs.baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading storage directory: %w", err)
+	}
+
+	items := make([]EventListItem, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		// Only include .json files
+		if !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		// Read and parse the file to get the received_at timestamp
+		filePath := fmt.Sprintf("%s/%s", fs.baseDir, entry.Name())
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("reading file %s: %w", filePath, err)
+		}
+
+		var fileData struct {
+			ReceivedAt string `json:"received_at"`
+		}
+		if err := json.Unmarshal(data, &fileData); err != nil {
+			return nil, fmt.Errorf("parsing JSON from %s: %w", filePath, err)
+		}
+
+		// Parse the RFC3339 timestamp and format it as requested
+		timestamp, err := time.Parse(time.RFC3339, fileData.ReceivedAt)
+		if err != nil {
+			return nil, fmt.Errorf("parsing timestamp from %s: %w", filePath, err)
+		}
+
+		formattedTime := timestamp.Format("02/01/2006 15:04:05")
+
+		items = append(items, EventListItem{
+			Filename:   entry.Name(),
+			ReceivedAt: formattedTime,
+		})
+	}
+
+	// Sort by filename (which includes timestamp), newest first
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Filename > items[j].Filename
+	})
+
+	return items, nil
+}
+
+// ReadEvent reads the contents of a webhook event file by filename
+func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
+	filepath := fmt.Sprintf("%s/%s", fs.baseDir, filename)
+
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("reading file %s: %w", filepath, err)
+	}
+
+	return data, nil
 }
 
 func (fs *FileStorage) Store(event *WebhookEvent) (string, error) {
