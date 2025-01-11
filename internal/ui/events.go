@@ -5,7 +5,6 @@ import (
 	"os/exec"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 )
 
 func (ui *UI) setupKeyBindings() {
@@ -47,31 +46,13 @@ func (ui *UI) openInEditor() *tcell.EventKey {
 		editor = "vim"
 	}
 
-	// The logic below should probably live elsewhere
-	// Stop the UI temporarily but keep the webhook server running
-	ui.app.Stop()
-
-	// Run the editor
-	cmd := exec.Command(editor, fullPath)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
-
-	ui.app = tview.NewApplication()
-
-	ui.initComponents()
-	ui.setupLayout()
-	ui.setupKeyBindings()
-	ui.loadInitialFiles()
-
-	// Restore the previous selection
-	ui.requestList.SetCurrentItem(currentIndex)
-
-	// Restart the UI
-	if err := ui.app.Run(); err != nil {
-		panic(err) //TODO: Let's not panic
-	}
+	ui.app.Suspend(func() {
+		cmd := exec.Command(editor, fullPath)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		_ = cmd.Run()
+	})
 
 	return nil
 }
