@@ -1,5 +1,7 @@
 # 🎯 Webhook Consumer
 
+> This tool is updating quickly, and the readme isn't always up to date.
+
 A lightweight command-line tool for locally testing and debugging webhooks
 during development. When you run this tool, it creates a temporary public URL
 that receives webhook events and saves them locally for inspection - perfect
