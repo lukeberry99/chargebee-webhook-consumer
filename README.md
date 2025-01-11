@@ -52,13 +52,7 @@ For Cloudflare:
 
 ## 🔧 Configuration
 
-It looks for configuration files in the following locations (in order):
-
-- $XDG_CONFIG_HOME/webhook-consumer/config.yaml
-- $HOME/.config/webhook-consumer/config.yaml
-- /etc/xdg/webhook-consumer/config.yaml
-- /etc/webhook-consumer/config.yaml
-- ./config.yaml
+It looks for configuration files in the following location: `$HOME/.config/webhook-consumer/config.yaml`
 
 Example configuration file:
 
@@ -70,6 +64,10 @@ storage:
 tunnel:
   driver: "ngrok" # Options: "ngrok", "cloudflare", "local" Default: "local"
   cloudflare_token: "your-token-here" # Only needed for cloudflare
+services:
+  chargebee:
+    event_type_source: "json"
+    event_type_location: "event_type"
 ```
 
 Default configuration values:

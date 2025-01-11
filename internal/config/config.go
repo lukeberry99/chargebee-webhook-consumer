@@ -32,31 +32,12 @@ func getConfigLocations(configPath string) []string {
 		return []string{configPath}
 	}
 
-	locations := []string{}
-
-	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
-		locations = append(locations, filepath.Join(xdgConfig, "webhook-consumer", "config.yaml"))
-	} else if home, err := os.UserHomeDir(); err == nil {
-		// XDG default is ~/.config
-		locations = append(locations, filepath.Join(home, ".config", "webhook-consumer", "config.yaml"))
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return []string{}
 	}
 
-	if xdgConfigDirs := os.Getenv("XDG_CONFIG_DIRS"); xdgConfigDirs != "" {
-		for _, dir := range filepath.SplitList(xdgConfigDirs) {
-			locations = append(locations, filepath.Join(dir, "webhook-consumer", "config.yaml"))
-		}
-	} else {
-		// Default XDG_CONFIG_DIRS is /etc/xdg
-		locations = append(locations, "/etc/xdg/webhook-consumer/config.yaml")
-	}
-
-	// /etc fallback
-	locations = append(locations, "/etc/webhook-consumer/config.yaml")
-
-	// current working directory
-	locations = append(locations, "config.yaml")
-
-	return locations
+	return []string{filepath.Join(home, ".config", "webhook-consumer", "config.yaml")}
 }
 
 func Load(configPath string) (*Config, error) {
