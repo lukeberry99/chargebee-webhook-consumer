@@ -24,7 +24,12 @@ func (ui *UI) watchFileUpdates() {
 }
 
 func (ui *UI) addFileToList(file storage.EventListItem) {
-	ui.requestList.AddItem(file.Filename, file.ReceivedAt, 0, func() {
+	secondaryText := file.ReceivedAt
+	if file.ServiceName != "" && ui.selectedService == "All" {
+		secondaryText = fmt.Sprintf("%s | Service: %s", file.ReceivedAt, file.ServiceName)
+	}
+
+	ui.requestList.AddItem(file.Filename, secondaryText, 0, func() {
 		content, err := ui.store.ReadEvent(file.Filename)
 		if err != nil {
 			ui.requestDetails.SetText(fmt.Sprintf("Error reading file: %v", err))

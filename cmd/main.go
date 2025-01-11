@@ -24,7 +24,8 @@ func main() {
 		logChan <- fmt.Sprintf("Error when loading configuration file: %v", err)
 	}
 
-	store, err := storage.NewFileStorage("./logs")
+	storageDir := cfg.Storage.Path
+	store, err := storage.NewFileStorage(storageDir)
 	if err != nil {
 		logChan <- fmt.Sprintf("Failed to create storage: %v", err)
 	}

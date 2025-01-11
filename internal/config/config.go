@@ -71,9 +71,6 @@ func Load(configPath string) (*Config, error) {
 	if config.Server.Port == 0 {
 		config.Server.Port = 8080
 	}
-	if config.Storage.Path == "" {
-		config.Storage.Path = "./logs"
-	}
 	if config.Tunnel.Driver == "" {
 		config.Tunnel.Driver = "local"
 	}

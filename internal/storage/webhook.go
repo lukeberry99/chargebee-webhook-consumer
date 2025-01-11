@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -28,7 +29,30 @@ type WebhookStorage interface {
 	Store(event *WebhookEvent, rawBody []byte) (string, error)
 }
 
-func NewFileStorage(baseDir string) (*FileStorage, error) {
+type EventListItem struct {
+	Filename    string
+	ReceivedAt  string
+	ServiceName string
+}
+
+func getWebhookDataDirectory() string {
+	if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
+		return filepath.Join(dataHome, "webhook-consumer", "webhooks")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".", "webhook-data")
+	}
+
+	return filepath.Join(home, ".local", "share", "webhook-consumer", "webhooks")
+}
+
+func NewFileStorage(customPath string) (*FileStorage, error) {
+	baseDir := customPath
+	if baseDir == "" {
+		baseDir = getWebhookDataDirectory()
+	}
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return nil, fmt.Errorf("creating storage directory: %w", err)
 	}
@@ -55,13 +79,27 @@ func (fs *FileStorage) watchDirectory() {
 	}
 	defer watcher.Close()
 
-	err = watcher.Add(fs.baseDir)
-	if err != nil {
-		fmt.Printf("Error watching directory: %v\n", err)
+	// Watch base directory
+	if err := watcher.Add(fs.baseDir); err != nil {
+		fmt.Printf("Error watching base directory: %v\n", err)
 		return
 	}
 
-	// Debounce timer to prevent rapid updates
+	// Watch all existing service directories
+	if err := filepath.Walk(fs.baseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if err := watcher.Add(path); err != nil {
+				fmt.Printf("Error watching directory %s: %v\n", path, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		fmt.Printf("Error setting up directory watchers: %v\n", err)
+	}
+
 	var timer *time.Timer
 	for {
 		select {
@@ -69,14 +107,20 @@ func (fs *FileStorage) watchDirectory() {
 			if !ok {
 				return
 			}
-			// Only care about create, remove, or rename operations
-			if event.Op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
+
+			if event.Op&fsnotify.Create != 0 {
+				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+					if err := watcher.Add(event.Name); err != nil {
+						fmt.Printf("Error watching new directory %s: %v\n", event.Name, err)
+					}
+				}
+			}
+
+			if event.Op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename|fsnotify.Write) != 0 {
 				if timer != nil {
 					timer.Stop()
 				}
-				// Wait a short period before updating to batch rapid changes
 				timer = time.AfterFunc(100*time.Millisecond, func() {
-					// Get updated list
 					items, err := fs.ListEvents()
 					if err != nil {
 						fmt.Printf("Error listing events: %v\n", err)
@@ -94,61 +138,75 @@ func (fs *FileStorage) watchDirectory() {
 	}
 }
 
-type EventListItem struct {
-	Filename   string
-	ReceivedAt string
-}
-
 func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
 	searchDir := fs.baseDir
 	if fs.selectedService != "" && fs.selectedService != "All" {
-		searchDir = fmt.Sprintf("%s/%s", fs.baseDir, fs.selectedService)
-		if err := os.MkdirAll(searchDir, 0755); err != nil {
+		searchDir = filepath.Join(fs.baseDir, fs.selectedService)
+		if err := os.MkdirAll(searchDir, 0750); err != nil {
 			return nil, fmt.Errorf("creating service directory: %w", err)
 		}
 	}
 
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
-		return nil, fmt.Errorf("reading storage directory: %w", err)
+	if _, err := os.Stat(searchDir); os.IsNotExist(err) {
+		return []EventListItem{}, nil
 	}
 
-	items := make([]EventListItem, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
+	var items []EventListItem
 
-		// Only include .json files
-		if !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		// Read and parse the file to get the received_at timestamp
-		filePath := fmt.Sprintf("%s/%s", searchDir, entry.Name())
-		data, err := os.ReadFile(filePath)
+	err := filepath.Walk(searchDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil, fmt.Errorf("reading file %s: %w", filePath, err)
+			return nil
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if !strings.HasSuffix(info.Name(), ".json") {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(fs.baseDir, path)
+		if err != nil {
+			return nil
+		}
+
+		pathParts := strings.Split(filepath.Dir(relPath), string(filepath.Separator))
+		var serviceName string
+		if len(pathParts) > 0 && pathParts[0] != "." {
+			serviceName = pathParts[0]
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
 		}
 
 		var fileData struct {
 			ReceivedAt string `json:"received_at"`
 		}
 		if err := json.Unmarshal(data, &fileData); err != nil {
-			return nil, fmt.Errorf("parsing JSON from %s: %w", filePath, err)
+			return nil
 		}
 
 		timestamp, err := time.Parse(time.RFC3339, fileData.ReceivedAt)
 		if err != nil {
-			return nil, fmt.Errorf("parsing timestamp from %s: %w", filePath, err)
+			return nil
 		}
 
 		formattedTime := timestamp.Format("02/01/2006 15:04:05")
 
 		items = append(items, EventListItem{
-			Filename:   entry.Name(),
-			ReceivedAt: formattedTime,
+			Filename:    filepath.Base(path),
+			ReceivedAt:  formattedTime,
+			ServiceName: serviceName,
 		})
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("walking directory: %w", err)
 	}
 
 	// Sort by filename (which includes timestamp), newest first
@@ -173,16 +231,25 @@ func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
 func (fs *FileStorage) Store(event *WebhookEvent, rawBody []byte) (string, error) {
 	storageDir := fs.baseDir
 	if fs.selectedService != "" && fs.selectedService != "All" {
-		storageDir = fmt.Sprintf("%s/%s", fs.baseDir, fs.selectedService)
-		if err := os.MkdirAll(storageDir, 0755); err != nil {
-			return "", fmt.Errorf("creating service directory: %w", err)
-		}
+		storageDir = filepath.Join(fs.baseDir, fs.selectedService)
 	}
 
-	filename := fmt.Sprintf("%s/%d_%s.json", storageDir, event.ReceivedAt.Unix(),
-		fs.generateUniqueFilename(rawBody))
+	if err := os.MkdirAll(storageDir, 0750); err != nil {
+		return "", fmt.Errorf("creating storage directory: %w", err)
+	}
 
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
+	filename := filepath.Join(storageDir, fmt.Sprintf("%s_%s.json",
+		event.ReceivedAt.Format("150405"),
+		fs.generateUniqueFilename(rawBody)))
+
+	if fs.selectedService != "" && fs.selectedService != "All" {
+		filename = filepath.Join(storageDir, fmt.Sprintf("%s_%s_%s.json",
+			event.ReceivedAt.Format("150405"),
+			fs.selectedService,
+			fs.generateUniqueFilename(rawBody)))
+	}
+
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
 		return "", fmt.Errorf("opening file: %w", err)
 	}
@@ -199,6 +266,16 @@ func (fs *FileStorage) Store(event *WebhookEvent, rawBody []byte) (string, error
 	if err := encoder.Encode(data); err != nil {
 		return "", fmt.Errorf("encoding JSON: %w", err)
 	}
+
+	// Trigger an immediate update after storing
+	go func() {
+		// Small delay to ensure file is written
+		time.Sleep(50 * time.Millisecond)
+		items, err := fs.ListEvents()
+		if err == nil {
+			fs.updates <- items
+		}
+	}()
 
 	return filename, nil
 }
