@@ -2,30 +2,22 @@ package ui
 
 import (
 	"fmt"
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"log"
 	"strings"
+
+	"github.com/lukeberry99/webhook-consumer/internal/storage"
 )
 
 func (ui *UI) loadInitialFiles() {
-	initialFiles, err := ui.store.ListEvents()
-	if err != nil {
-		panic(err) //TODO: Let's not panic
-	}
-
-	for _, file := range initialFiles {
-		ui.addFileToList(file)
-	}
+	ui.refreshFileList()
 }
 
 func (ui *UI) watchFileUpdates() {
 	go func() {
 		updates := ui.store.WatchEvents()
-		for files := range updates {
+		for range updates {
 			ui.app.QueueUpdateDraw(func() {
-				ui.requestList.Clear()
-				for _, file := range files {
-					ui.addFileToList(file)
-				}
+				ui.refreshFileList()
 			})
 		}
 	}()
@@ -74,8 +66,24 @@ func (ui *UI) watchLogs(logChan <-chan string) {
 	go func() {
 		for logMsg := range logChan {
 			ui.app.QueueUpdateDraw(func() {
-				ui.logView.SetText(ui.logView.GetText(true) + logMsg + "\n")
+				if ui.selectedService == "All" || strings.Contains(logMsg, ui.selectedService) {
+					currentText := ui.logView.GetText(true)
+					ui.logView.SetText(currentText + logMsg + "\n")
+					ui.logView.ScrollToEnd()
+				}
 			})
 		}
 	}()
+}
+
+func (ui *UI) refreshFileList() {
+	ui.requestList.Clear()
+	files, err := ui.store.ListEvents()
+	if err != nil {
+		log.Fatalf("failed to load files: %v", err)
+	}
+
+	for _, file := range files {
+		ui.addFileToList(file)
+	}
 }

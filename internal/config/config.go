@@ -19,6 +19,12 @@ type Config struct {
 		Driver          string `yaml:"driver"`
 		CloudflareToken string `yaml:"cloudflare_token,omitempty"`
 	} `yaml:"tunnel"`
+	Services map[string]ServiceConfig `yaml:"services"`
+}
+
+type ServiceConfig struct {
+	EventTypeSource   string `yaml:"event_type_source"`
+	EventTypeLocation string `yaml:"event_type_location"`
 }
 
 func getConfigLocations(configPath string) []string {
@@ -56,31 +62,28 @@ func getConfigLocations(configPath string) []string {
 func Load(configPath string) (*Config, error) {
 	locations := getConfigLocations(configPath)
 
-	var lastErr error
 	var config *Config
 
 	for _, loc := range locations {
-		data, err := os.ReadFile(loc)
-		if err != nil {
-			lastErr = err
-			continue
-		}
+		data, _ := os.ReadFile(loc)
 
 		config = &Config{}
 		if err := yaml.Unmarshal(data, config); err != nil {
 			return nil, fmt.Errorf("error parsing config file %s: %w", loc, err)
 		}
 
-		// log.Printf("Using config file: %s", loc)
 		break // Use the first valid config file found
 	}
 
 	// If no config file was found, create default config
 	if config == nil {
-		if lastErr != nil {
-			// log.Printf("No config files found, using defaults.")
+		config = &Config{
+			Services: make(map[string]ServiceConfig),
 		}
-		config = &Config{}
+	}
+
+	if config.Services == nil {
+		config.Services = make(map[string]ServiceConfig)
 	}
 
 	// Apply defaults

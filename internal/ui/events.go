@@ -11,6 +11,11 @@ func (ui *UI) setupKeyBindings() {
 	ui.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEsc:
+			if ui.isModalVisible {
+				ui.app.SetRoot(ui.mainFlex, true)
+				ui.isModalVisible = false
+				return nil
+			}
 			ui.app.Stop()
 		case tcell.KeyTab:
 			return ui.handleTabKey()
@@ -18,6 +23,12 @@ func (ui *UI) setupKeyBindings() {
 
 		if event.Rune() == 'e' {
 			return ui.openInEditor()
+		}
+
+		if event.Rune() == 's' {
+			ui.app.SetRoot(ui.serviceModal, true)
+			ui.isModalVisible = true
+			return nil
 		}
 
 		if ui.app.GetFocus() == ui.requestList {
@@ -58,12 +69,13 @@ func (ui *UI) openInEditor() *tcell.EventKey {
 }
 
 func (ui *UI) handleTabKey() *tcell.EventKey {
-	if ui.app.GetFocus() == ui.requestList {
+	switch ui.app.GetFocus() {
+	case ui.requestList:
 		ui.app.SetFocus(ui.requestDetails)
-		ui.statusBar.SetText(" ESC: Quit | j/k/↑/↓: Navigate | TAB: Switch Panel | e: Edit")
-	} else {
+		ui.statusBar.SetText(" ESC: Quit | j/k/↑/↓: Navigate | TAB: Switch Panel | e: Edit | s: Select Service")
+	case ui.requestDetails:
 		ui.app.SetFocus(ui.requestList)
-		ui.statusBar.SetText(" ESC: Quit | j/k/↑/↓: Navigate | TAB: Switch Panel | ENTER: View Log | e: Edit")
+		ui.statusBar.SetText(" ESC: Quit | j/k/↑/↓: Navigate | TAB: Switch Panel | ENTER: View Log | e: Edit | s: Select Service")
 	}
 
 	return nil
