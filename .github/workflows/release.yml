@@ -9,28 +9,38 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.21'
       - name: Run tests
         run: make test
       - name: Build release binaries
         run: make dist
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum whook-* > checksums.txt
       - name: Generate changelog
         id: changelog
         run: |
-          latest_tag=$(git describe --tags --abbrev=0)
-          previous_tag=$(git describe --tags --abbrev=0 HEAD^)
+          current_tag=${GITHUB_REF#refs/tags/}
+          CHANGELOG="## Changes\n"
+          if git rev-list --tags --max-count=2 | wc -l | grep -q "^1$"; then
+            CHANGELOG+="Initial release\n\n"
+            CHANGELOG+="$(git log --pretty=format:"* %s" ${{ github.sha }})"
+          else
+            previous_tag=$(git describe --tags --abbrev=0 HEAD^)
+            CHANGELOG+="$(git log --pretty=format:"* %s" ${previous_tag}..${current_tag})"
+          fi
+          CHANGELOG+="\n\nSHA256 Checksums are in checksums.txt"
+
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "## Changes" >> $GITHUB_OUTPUT
-          git log --pretty=format:"* %s" $previous_tag..$latest_tag >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
@@ -42,6 +52,7 @@ jobs:
             dist/whook-darwin-amd64
             dist/whook-darwin-arm64
             dist/whook-windows-amd64.exe
+            dist/checksums.txt
           body: ${{ steps.changelog.outputs.CHANGELOG }}
           draft: false
           prerelease: false
