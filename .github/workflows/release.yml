@@ -28,19 +28,17 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          current_tag=${GITHUB_REF#refs/tags/}
-          CHANGELOG="## Changes\n"
-          if git rev-list --tags --max-count=2 | wc -l | grep -q "^1$"; then
-            CHANGELOG+="Initial release\n\n"
-            CHANGELOG+="$(git log --pretty=format:"* %s" ${{ github.sha }})"
-          else
-            previous_tag=$(git describe --tags --abbrev=0 HEAD^)
-            CHANGELOG+="$(git log --pretty=format:"* %s" ${previous_tag}..${current_tag})"
-          fi
-          CHANGELOG+="\n\nSHA256 Checksums are in checksums.txt"
-
+          tag_name=${GITHUB_REF#refs/tags/}
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "## Changes" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+
+          # Get all commits until this tag
+          git log --pretty=format:"* %s" $(git rev-list --max-parents=0 HEAD)..HEAD >> $GITHUB_OUTPUT
+
+          echo "" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "SHA256 Checksums are in checksums.txt" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
