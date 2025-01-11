@@ -2,6 +2,7 @@
 BINARY_NAME=whook
 MAIN_PACKAGE=./cmd/whook
 DIST_DIR=dist
+VERSION_PKG=internal/version/version.go
 
 # Get version from git tags, fallback to dev if no tags exist
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -23,14 +24,20 @@ COLOR_GREEN = \033[32m
 .PHONY: all
 all: clean build
 
+.PHONY: set-version
+set-version:
+	@printf "$(COLOR_CYAN)Setting version information...$(COLOR_RESET)\n"
+	@echo "package version\n\nvar (\n    Version = \"$(VERSION)\"\n    Commit = \"$(COMMIT)\"\n    Date = \"$(DATE)\"\n)" > $(VERSION_PKG)
+	@printf "$(COLOR_GREEN)Done!$(COLOR_RESET)\n"
+
 .PHONY: build
-build: ## Build binary for current platform
+build: set-version ## Build binary for current platform
 	@printf "$(COLOR_CYAN)Building $(BINARY_NAME)...$(COLOR_RESET)\n"
 	@go build $(GOFLAGS) -o $(BINARY_NAME) $(MAIN_PACKAGE)
 	@printf "$(COLOR_GREEN)Done!$(COLOR_RESET)\n"
 
 .PHONY: install
-install: ## Install binary to $GOPATH/bin
+install: set-version ## Install binary to $GOPATH/bin
 	@printf "$(COLOR_CYAN)Installing $(BINARY_NAME)...$(COLOR_RESET)\n"
 	@go install $(GOFLAGS) $(MAIN_PACKAGE)
 	@printf "$(COLOR_GREEN)Done! Binary installed to $$GOPATH/bin/$(BINARY_NAME)$(COLOR_RESET)\n"
@@ -40,6 +47,7 @@ clean: ## Clean build artifacts
 	@printf "$(COLOR_CYAN)Cleaning...$(COLOR_RESET)\n"
 	@rm -rf $(DIST_DIR)
 	@rm -f $(BINARY_NAME)
+	@rm -f $(VERSION_PKG)
 	@go clean
 	@printf "$(COLOR_GREEN)Done!$(COLOR_RESET)\n"
 
@@ -68,7 +76,7 @@ fmt: ## Format code
 	@printf "$(COLOR_GREEN)Done!$(COLOR_RESET)\n"
 
 .PHONY: dist
-dist: clean ## Build binaries for all supported platforms
+dist: clean set-version ## Build binaries for all supported platforms
 	@printf "$(COLOR_CYAN)Building binaries for all platforms...$(COLOR_RESET)\n"
 	@mkdir -p $(DIST_DIR)
 	@for platform in $(PLATFORMS); do \
@@ -98,7 +106,7 @@ release: lint test dist ## Prepare for release (lint, test, and build distributi
 	@printf "$(COLOR_CYAN)Binaries available in $(DIST_DIR)$(COLOR_RESET)\n"
 
 .PHONY: dev
-dev: ## Build and run for development
+dev: set-version ## Build and run for development
 	@printf "$(COLOR_CYAN)Building and running for development...$(COLOR_RESET)\n"
 	@go run $(GOFLAGS) $(MAIN_PACKAGE)
 

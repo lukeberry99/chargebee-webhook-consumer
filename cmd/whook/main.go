@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	// Add version flag
 	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
 
@@ -28,6 +29,7 @@ func main() {
 		fmt.Printf("built at: %s\n", vi.Date)
 		os.Exit(0)
 	}
+
 	logChan := make(chan string, 100) // Buffered channel to prevent blocking
 	logChan <- "Starting webhook consumer..."
 

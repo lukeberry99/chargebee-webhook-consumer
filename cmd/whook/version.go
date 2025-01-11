@@ -1,21 +1,17 @@
 package main
 
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-)
+import "github.com/lukeberry99/whook/internal/version"
+
+func GetVersionInfo() VersionInfo {
+	return VersionInfo{
+		Version: version.Version,
+		Commit:  version.Commit,
+		Date:    version.Date,
+	}
+}
 
 type VersionInfo struct {
 	Version string
 	Commit  string
 	Date    string
-}
-
-func GetVersionInfo() VersionInfo {
-	return VersionInfo{
-		Version: version,
-		Commit:  commit,
-		Date:    date,
-	}
 }
