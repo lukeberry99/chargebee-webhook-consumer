@@ -29,13 +29,6 @@ func New(cfg *config.Config, store *storage.FileStorage) *UI {
 		config: cfg,
 	}
 
-	services := make([]string, 0, len(cfg.Services))
-	services = append(services, "All") // Add an "All" option
-
-	for service := range cfg.Services {
-		services = append(services, service)
-	}
-
 	ui.selectedService = "All"
 	store.SetSelectedService("")
 

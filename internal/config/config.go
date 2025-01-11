@@ -52,8 +52,6 @@ func Load(configPath string) (*Config, error) {
 		if err := yaml.Unmarshal(data, config); err != nil {
 			return nil, fmt.Errorf("error parsing config file %s: %w", loc, err)
 		}
-
-		break // Use the first valid config file found
 	}
 
 	// If no config file was found, create default config
