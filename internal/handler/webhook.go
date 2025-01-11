@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/whook/internal/storage"
 )
 
 func WebhookHandler(w http.ResponseWriter, r *http.Request, store storage.WebhookStorage, logChan chan<- string) {

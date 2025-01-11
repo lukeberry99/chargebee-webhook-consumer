@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lukeberry99/webhook-consumer/internal/config"
-	"github.com/lukeberry99/webhook-consumer/internal/handler"
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/whook/internal/config"
+	"github.com/lukeberry99/whook/internal/handler"
+	"github.com/lukeberry99/whook/internal/storage"
 )
 
 func NewWebhookServer(cfg *config.Config, store *storage.FileStorage, logChan chan<- string) *http.Server {

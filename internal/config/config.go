@@ -37,7 +37,7 @@ func getConfigLocations(configPath string) []string {
 		return []string{}
 	}
 
-	return []string{filepath.Join(home, ".config", "webhook-consumer", "config.yaml")}
+	return []string{filepath.Join(home, ".config", "whook", "config.yaml")}
 }
 
 func Load(configPath string) (*Config, error) {

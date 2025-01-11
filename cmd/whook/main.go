@@ -8,11 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lukeberry99/webhook-consumer/internal/config"
-	"github.com/lukeberry99/webhook-consumer/internal/server"
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
-	"github.com/lukeberry99/webhook-consumer/internal/tunnel"
-	"github.com/lukeberry99/webhook-consumer/internal/ui"
+	"github.com/lukeberry99/whook/internal/config"
+	"github.com/lukeberry99/whook/internal/server"
+	"github.com/lukeberry99/whook/internal/storage"
+	"github.com/lukeberry99/whook/internal/tunnel"
+	"github.com/lukeberry99/whook/internal/ui"
 )
 
 func main() {

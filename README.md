@@ -1,4 +1,4 @@
-# 🎯 Webhook Consumer
+# 🎯 whook
 
 > This tool is updating quickly, and the readme isn't always up to date.
 
@@ -27,13 +27,13 @@ You can install the tool in several ways:
 Using Go:
 
 ```bash
-go install github.com/lukeberry99/webhook-consumer@latest
+go install github.com/lukeberry99/whook@latest
 ```
 
 Using Homebrew (macOS and Linux):
 
 ```bash
-brew install lukeberry99/tap/webhook-consumer
+brew install lukeberry99/tap/whook
 ```
 
 ## ✨ Prerequisites
@@ -52,7 +52,7 @@ For Cloudflare:
 
 ## 🔧 Configuration
 
-It looks for configuration files in the following location: `$HOME/.config/webhook-consumer/config.yaml`
+It looks for configuration files in the following location: `$HOME/.config/whook/config.yaml`
 
 Example configuration file:
 

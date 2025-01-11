@@ -1,4 +1,4 @@
-module github.com/lukeberry99/webhook-consumer
+module github.com/lukeberry99/whook
 
 go 1.23.4
 

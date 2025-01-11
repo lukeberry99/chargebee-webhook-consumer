@@ -3,8 +3,8 @@ package ui
 import (
 	"fmt"
 
-	"github.com/lukeberry99/webhook-consumer/internal/config"
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/whook/internal/config"
+	"github.com/lukeberry99/whook/internal/storage"
 	"github.com/rivo/tview"
 )
 

@@ -37,7 +37,7 @@ type EventListItem struct {
 
 func getWebhookDataDirectory() string {
 	if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
-		return filepath.Join(dataHome, "webhook-consumer", "webhooks")
+		return filepath.Join(dataHome, "whook", "webhooks")
 	}
 
 	home, err := os.UserHomeDir()
@@ -45,7 +45,7 @@ func getWebhookDataDirectory() string {
 		return filepath.Join(".", "webhook-data")
 	}
 
-	return filepath.Join(home, ".local", "share", "webhook-consumer", "webhooks")
+	return filepath.Join(home, ".local", "share", "whook", "webhooks")
 }
 
 func NewFileStorage(customPath string) (*FileStorage, error) {

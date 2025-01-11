@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/lukeberry99/webhook-consumer/internal/storage"
+	"github.com/lukeberry99/whook/internal/storage"
 )
 
 func (ui *UI) loadInitialFiles() {
