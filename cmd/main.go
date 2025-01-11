@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,26 +16,50 @@ import (
 )
 
 func main() {
+	logChan := make(chan string, 100) // Buffered channel to prevent blocking
+	logChan <- "Starting webhook consumer..."
+
 	cfg, err := config.Load("")
 	if err != nil {
-		log.Fatalf("Error when loading configuration file: %v", err)
+		logChan <- fmt.Sprintf("Error when loading configuration file: %v", err)
 	}
 
 	store, err := storage.NewFileStorage("./logs")
 	if err != nil {
-		log.Fatalf("Failed to create storage: %v", err)
+		logChan <- fmt.Sprintf("Failed to create storage: %v", err)
 	}
 
-	logChan := make(chan string)
-
+	logChan <- "Initialising UI..."
 	uiDone := make(chan struct{})
+	uiErr := make(chan error, 1)
 	go func() {
-		ui.StartUI(cfg, logChan, store)
+		if err := ui.StartUI(cfg, logChan, store); err != nil {
+			logChan <- fmt.Sprintf("UI Error: %v", err)
+			uiErr <- err
+			close(uiDone)
+			return
+		}
+
 		close(uiDone)
 	}()
 
-	// Give the UI some time to start up
+	// Start monitoring UI errors in background
+	go func() {
+		if err := <-uiErr; err != nil {
+			fmt.Printf("Failed to start UI: %v\n", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Check if terminal is available
+	if _, err := os.Stdout.Stat(); err != nil {
+		fmt.Printf("Terminal not available: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Give the UI some time to initialize
 	time.Sleep(100 * time.Millisecond)
+	logChan <- "UI initialised successfully"
 
 	var tunnelServer tunnel.Tunnel
 	if cfg.Tunnel.Driver != "local" {

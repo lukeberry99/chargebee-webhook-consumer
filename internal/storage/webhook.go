@@ -14,8 +14,9 @@ import (
 )
 
 type FileStorage struct {
-	baseDir string
-	updates chan []EventListItem
+	baseDir         string
+	updates         chan []EventListItem
+	selectedService string
 }
 
 type WebhookEvent struct {
@@ -99,7 +100,15 @@ type EventListItem struct {
 }
 
 func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
-	entries, err := os.ReadDir(fs.baseDir)
+	searchDir := fs.baseDir
+	if fs.selectedService != "" && fs.selectedService != "All" {
+		searchDir = fmt.Sprintf("%s/%s", fs.baseDir, fs.selectedService)
+		if err := os.MkdirAll(searchDir, 0755); err != nil {
+			return nil, fmt.Errorf("creating service directory: %w", err)
+		}
+	}
+
+	entries, err := os.ReadDir(searchDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading storage directory: %w", err)
 	}
@@ -116,7 +125,7 @@ func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
 		}
 
 		// Read and parse the file to get the received_at timestamp
-		filePath := fmt.Sprintf("%s/%s", fs.baseDir, entry.Name())
+		filePath := fmt.Sprintf("%s/%s", searchDir, entry.Name())
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("reading file %s: %w", filePath, err)
@@ -151,7 +160,7 @@ func (fs *FileStorage) ListEvents() ([]EventListItem, error) {
 }
 
 func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
-	filepath := fmt.Sprintf("%s/%s", fs.baseDir, filename)
+	filepath := fs.GetFullPath(filename)
 
 	data, err := os.ReadFile(filepath)
 	if err != nil {
@@ -162,7 +171,16 @@ func (fs *FileStorage) ReadEvent(filename string) ([]byte, error) {
 }
 
 func (fs *FileStorage) Store(event *WebhookEvent, rawBody []byte) (string, error) {
-	filename := fmt.Sprintf("%s/%d_%s.json", fs.baseDir, event.ReceivedAt.Unix(), fs.generateUniqueFilename(rawBody))
+	storageDir := fs.baseDir
+	if fs.selectedService != "" && fs.selectedService != "All" {
+		storageDir = fmt.Sprintf("%s/%s", fs.baseDir, fs.selectedService)
+		if err := os.MkdirAll(storageDir, 0755); err != nil {
+			return "", fmt.Errorf("creating service directory: %w", err)
+		}
+	}
+
+	filename := fmt.Sprintf("%s/%d_%s.json", storageDir, event.ReceivedAt.Unix(),
+		fs.generateUniqueFilename(rawBody))
 
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -186,7 +204,20 @@ func (fs *FileStorage) Store(event *WebhookEvent, rawBody []byte) (string, error
 }
 
 func (fs *FileStorage) GetFullPath(filename string) string {
+	if fs.selectedService != "" && fs.selectedService != "All" {
+		return fmt.Sprintf("%s/%s/%s", fs.baseDir, fs.selectedService, filename)
+	}
 	return fmt.Sprintf("%s/%s", fs.baseDir, filename)
+}
+
+func (fs *FileStorage) SetSelectedService(service string) {
+	fs.selectedService = service
+
+	// Trigger an update of the file browser when the selected service changes
+	items, err := fs.ListEvents()
+	if err == nil {
+		fs.updates <- items
+	}
 }
 
 // Generate a hash of the request payload for unique filenames

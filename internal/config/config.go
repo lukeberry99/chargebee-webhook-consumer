@@ -77,7 +77,13 @@ func Load(configPath string) (*Config, error) {
 
 	// If no config file was found, create default config
 	if config == nil {
-		config = &Config{}
+		config = &Config{
+			Services: make(map[string]ServiceConfig),
+		}
+	}
+
+	if config.Services == nil {
+		config.Services = make(map[string]ServiceConfig)
 	}
 
 	// Apply defaults
