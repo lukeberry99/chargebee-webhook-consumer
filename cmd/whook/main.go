@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -16,6 +17,17 @@ import (
 )
 
 func main() {
+	showVersion := flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	// Handle version flag
+	if *showVersion {
+		vi := GetVersionInfo()
+		fmt.Printf("whook version %s\n", vi.Version)
+		fmt.Printf("commit: %s\n", vi.Commit)
+		fmt.Printf("built at: %s\n", vi.Date)
+		os.Exit(0)
+	}
 	logChan := make(chan string, 100) // Buffered channel to prevent blocking
 	logChan <- "Starting webhook consumer..."
 
