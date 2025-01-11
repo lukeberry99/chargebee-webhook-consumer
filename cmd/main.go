@@ -45,20 +45,26 @@ func main() {
 			CloudflareToken: cfg.Tunnel.CloudflareToken,
 		}
 
-		tunnelServer, err = tunnel.New(tunnelConfig)
-		if err != nil {
-			log.Fatalf("Failed to create tunnel: %v", err)
+		var tunnelErr error
+		tunnelServer, tunnelErr = tunnel.New(tunnelConfig)
+		if tunnelErr != nil {
+			logChan <- fmt.Sprintf("Failed to create tunnel: %v - falling back to local mode", tunnelErr)
+			cfg.Tunnel.Driver = "local"
+		} else {
+			tunnelURL, startErr := tunnelServer.Start()
+			if startErr != nil {
+				logChan <- fmt.Sprintf("Failed to start tunnel: %v - falling back to local mode", startErr)
+				cfg.Tunnel.Driver = "local"
+				tunnelServer = nil
+			} else {
+				logChan <- fmt.Sprintf("Tunnel URL: %s", tunnelURL)
+			}
 		}
+	}
 
-		tunnelURL, err := tunnelServer.Start()
-		if err != nil {
-			log.Fatalf("Failed to start tunnel: %v", err)
-		}
-
-		logChan <- fmt.Sprintf("Tunnel UR: %s", tunnelURL)
-	} else {
+	if cfg.Tunnel.Driver == "local" {
 		url := fmt.Sprintf("http://localhost:%d", cfg.Server.Port)
-		logChan <- fmt.Sprintf("Running in local mode - no tunnel started")
+		logChan <- "Running in local mode - no tunnel started"
 		logChan <- fmt.Sprintf("Tunnel URL: %s", url)
 	}
 
@@ -70,8 +76,6 @@ func main() {
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
-	logChan <- fmt.Sprintf("Server started on port %d", cfg.Server.Port)
 
 	select {
 	case err := <-serverErrors:
